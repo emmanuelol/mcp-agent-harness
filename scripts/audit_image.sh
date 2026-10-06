@@ -4,8 +4,9 @@ set -euo pipefail
 IMAGE="${IMAGE:-mcp-agent-harness:latest}"
 TRIVY_SEVERITY="${TRIVY_SEVERITY:-HIGH,CRITICAL}"
 TRIVY_EXIT_CODE="${TRIVY_EXIT_CODE:-1}"
+TRIVY_IGNORE_UNFIXED="${TRIVY_IGNORE_UNFIXED:-true}"
 TRIVY_EXTRA_ARGS=()
-if [ -n "${TRIVY_IGNORE_UNFIXED:-}" ]; then
+if [ "$TRIVY_IGNORE_UNFIXED" = "true" ]; then
   TRIVY_EXTRA_ARGS+=(--ignore-unfixed)
 fi
 
