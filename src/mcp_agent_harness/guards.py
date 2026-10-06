@@ -1,7 +1,8 @@
 import re
 import sys
 import logging
-from typing import Any
+from typing import Any, Optional
+from .telemetry import init_trace
 
 logger = logging.getLogger(__name__)
 
@@ -47,7 +48,12 @@ def block_raw_dataframes(obj: Any) -> None:
             block_raw_dataframes(item)
 
 
-def truncate_context(context: Any, max_chars: int = 2000) -> str:
+def truncate_context(
+    context: Any,
+    max_chars: int = 2000,
+    max_length: Optional[int] = None,
+    strip_xml: bool = True,
+) -> str:
     """
     Strips raw <DATA>...</DATA> blocks and truncates context to prevent LLM exhaustion.
     """
@@ -56,16 +62,20 @@ def truncate_context(context: Any, max_chars: int = 2000) -> str:
     if not isinstance(context, str):
         context = str(context)
 
-    # Strip heavy data blocks, replacing with placeholder
-    clean_context = re.sub(
-        r"<([A-Z_]+)>.*?</\1>",
-        r"[\1 data omitted — see scalar metrics]",
-        context,
-        flags=re.DOTALL,
-    )
+    limit = max_length if max_length is not None else max_chars
 
-    if len(clean_context) > max_chars:
-        return clean_context[:max_chars] + f"\n... [truncated, {len(clean_context)} chars total]"
+    if strip_xml:
+        clean_context = re.sub(
+            r"<([A-Z_]+)>.*?</\1>",
+            r"[\1 data omitted — see scalar metrics]",
+            context,
+            flags=re.DOTALL,
+        )
+    else:
+        clean_context = context
+
+    if len(clean_context) > limit:
+        return clean_context[:limit] + f"\n... [truncated, {len(clean_context)} chars total]"
 
     return clean_context
 

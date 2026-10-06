@@ -17,6 +17,23 @@ from .telemetry import init_trace
 logger = logging.getLogger(__name__)
 
 
+class ToolInfo(str):
+    """String representing a tool name with backwards-compatible .name attribute."""
+
+    @property
+    def name(self) -> str:
+        return str(self)
+
+
+class ToolList(list):
+    """List of tools supporting both synchronous iteration and async awaiting."""
+
+    def __await__(self):
+        async def _resolve():
+            return self
+        return _resolve().__await__()
+
+
 class AgentHarness:
     """
     SRE-hardened MCP harness for autonomous agents.
@@ -104,9 +121,9 @@ class AgentHarness:
 
         return decorator
 
-    def list_tools(self) -> list[str]:
-        """Returns list of registered tool names."""
-        return list(self._tools.keys())
+    def list_tools(self) -> ToolList:
+        """Returns list of registered tool names, compatible with sync and async callers."""
+        return ToolList([ToolInfo(name) for name in self._tools.keys()])
 
     def call_tool(self, name: str, *args: Any, **kwargs: Any) -> Any:
         """Directly invoke registered tool by name (ideal for tests and isolated calls)."""
