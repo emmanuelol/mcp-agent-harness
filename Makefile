@@ -9,7 +9,7 @@ test:
 demo:
 	docker compose up -d harness
 	sleep 3
-	curl -s http://localhost:8000/mcp/health || true
+	curl -f -s http://localhost:8000/health
 	docker compose down
 
 audit:

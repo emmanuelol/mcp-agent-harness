@@ -142,6 +142,11 @@ def main() -> None:
 
         harness = AgentHarness(name="mcp-agent-harness", register_builtins=True)
         app = FastAPI(title="MCP Agent Harness")
+
+        @app.get("/health")
+        def health_check() -> dict:
+            return {"status": "ok"}
+
         app.mount("/mcp", harness.sse_app())
         uvicorn.run(app, host=args.host, port=args.port)
 
