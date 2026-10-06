@@ -13,7 +13,7 @@ demo:
 	docker compose down
 
 audit:
-	./scripts/audit_image.sh
+	bash ./scripts/audit_image.sh
 
 clean:
 	docker compose down --rmi all --volumes --remove-orphans

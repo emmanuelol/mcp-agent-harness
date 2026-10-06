@@ -1,7 +1,13 @@
 #!/bin/bash
 set -euo pipefail
 
-IMAGE="mcp-agent-harness:latest"
+IMAGE="${IMAGE:-mcp-agent-harness:latest}"
+TRIVY_SEVERITY="${TRIVY_SEVERITY:-HIGH,CRITICAL}"
+TRIVY_EXIT_CODE="${TRIVY_EXIT_CODE:-1}"
+TRIVY_EXTRA_ARGS=()
+if [ -n "${TRIVY_IGNORE_UNFIXED:-}" ]; then
+  TRIVY_EXTRA_ARGS+=(--ignore-unfixed)
+fi
 
 echo "=== Scanning image for prohibited files ==="
 LEAKS=$(docker run --rm --entrypoint "" "$IMAGE" sh -c '
@@ -23,11 +29,13 @@ echo "Image size: $RAW_SIZE"
 # Check Trivy scan if trivy exists or run dockerized trivy if daemon available
 if command -v trivy &>/dev/null; then
   echo "=== Running local Trivy scan ==="
-  trivy image --severity HIGH,CRITICAL "$IMAGE"
+  trivy image --severity "$TRIVY_SEVERITY" --exit-code "$TRIVY_EXIT_CODE" "${TRIVY_EXTRA_ARGS[@]}" "$IMAGE"
 elif [ -e /var/run/docker.sock ]; then
   echo "=== Running containerized Trivy scan ==="
   docker run --rm -v /var/run/docker.sock:/var/run/docker.sock \
-    aquasec/trivy image --severity HIGH,CRITICAL "$IMAGE" || true
+    aquasec/trivy image --severity "$TRIVY_SEVERITY" --exit-code "$TRIVY_EXIT_CODE" "${TRIVY_EXTRA_ARGS[@]}" "$IMAGE"
+else
+  echo "=== Trivy unavailable; skipping vulnerability scan ==="
 fi
 
 echo "=== Audit passed ==="

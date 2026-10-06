@@ -8,8 +8,7 @@
 
 ## Reporting a Vulnerability
 
-Please do not report security vulnerabilities through public GitHub issues.
-Submit findings privately to security@paseoms.com.
+Please report security vulnerabilities and findings directly by opening an issue on GitHub.
 
 ## Security Constraints
 

@@ -5,7 +5,7 @@ from mcp_agent_harness.guards import truncate_context
 
 # 1. Initialize the Generic Harness
 harness = AgentHarness(
-    name="paseoms-mcp",
+    name="demo-agent-mcp",
     instructions="Backend MCP tools for autonomous operations.",
     register_builtins=True,
 )
@@ -15,7 +15,7 @@ harness = AgentHarness(
 def get_financial_context(phone_number: str, days: int = 7) -> dict:
     """
     Retrieve pre-aggregated financial context.
-    (In Paseo MS, queries Google Sheets / Odoo).
+    (Queries external databases/spreadsheets).
     """
     # Simulated heavy raw context
     raw_context = "<DATA>date,revenue\n2026-10-01,5000\n2026-10-02,6000</DATA>"

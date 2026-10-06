@@ -2,6 +2,7 @@
 
 [![CI Pipeline](https://github.com/emmanuelol/mcp-agent-harness/actions/workflows/ci.yml/badge.svg)](https://github.com/emmanuelol/mcp-agent-harness/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+[![Python: 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/downloads/)
 
 Generic, SRE-hardened Model Context Protocol (MCP) harness for autonomous agents.
 
@@ -27,7 +28,7 @@ make demo
 Install via pip in your consumer Dockerfile:
 
 ```dockerfile
-RUN pip install "git+https://github.com/<user>/mcp-agent-harness.git@<commit-hash>"
+RUN pip install "git+https://github.com/emmanuelol/mcp-agent-harness.git@v0.1.0"
 ```
 
 Mount into FastAPI:
