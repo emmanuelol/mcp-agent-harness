@@ -7,9 +7,9 @@ from functools import wraps
 from typing import Any, Callable
 
 try:
-    from mcp.server.mcpserver import MCPServer as FastMCP
-except (ImportError, ModuleNotFoundError):
     from mcp.server.fastmcp import FastMCP
+except (ImportError, ModuleNotFoundError):
+    from mcp.server.mcpserver import MCPServer as FastMCP
 
 from .guards import block_raw_dataframes
 from .telemetry import init_trace
@@ -32,6 +32,7 @@ class AgentHarness:
         self.name = name
         self.instructions = instructions
         self.mcp = FastMCP(name=name, instructions=instructions)
+        self._tools: dict[str, Callable] = {}
         if register_builtins:
             self._register_builtins()
 
@@ -65,6 +66,7 @@ class AgentHarness:
         """
 
         def decorator(func: Callable) -> Callable:
+            tool_name = kwargs.get("name") or getattr(func, "__name__", str(func))
             if inspect.iscoroutinefunction(func):
 
                 @wraps(func)
@@ -80,6 +82,7 @@ class AgentHarness:
                         )
                         return {"status": "error", "message": str(e), "trace_id": trace_id}
 
+                self._tools[tool_name] = async_wrapper
                 return self.mcp.tool(*args, **kwargs)(async_wrapper)
             else:
 
@@ -96,9 +99,20 @@ class AgentHarness:
                         )
                         return {"status": "error", "message": str(e), "trace_id": trace_id}
 
+                self._tools[tool_name] = sync_wrapper
                 return self.mcp.tool(*args, **kwargs)(sync_wrapper)
 
         return decorator
+
+    def list_tools(self) -> list[str]:
+        """Returns list of registered tool names."""
+        return list(self._tools.keys())
+
+    def call_tool(self, name: str, *args: Any, **kwargs: Any) -> Any:
+        """Directly invoke registered tool by name (ideal for tests and isolated calls)."""
+        if name not in self._tools:
+            raise ValueError(f"Tool '{name}' is not registered in harness.")
+        return self._tools[name](*args, **kwargs)
 
     def sse_app(self) -> Any:
         """Returns the ASGI app for FastAPI/Starlette mounting."""
@@ -114,11 +128,11 @@ def main() -> None:
 
     if args.check:
         harness = AgentHarness(name="mcp-agent-harness", register_builtins=True)
-        tools = harness.mcp._tool_manager.list_tools()
+        tools = harness.list_tools()
         output = {
             "status": "healthy",
             "tools_registered": len(tools),
-            "tools": [t.name for t in tools],
+            "tools": tools,
         }
         print(json.dumps(output))
         sys.exit(0)

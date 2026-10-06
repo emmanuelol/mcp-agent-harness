@@ -8,12 +8,11 @@ class DataFrame:
 
 def test_harness_init_and_default_tools():
     harness = AgentHarness("test-harness", "Test instructions", register_builtins=True)
-    tools = harness.mcp._tool_manager.list_tools()
+    tools = harness.list_tools()
     assert len(tools) == 3
-    tool_names = [t.name for t in tools]
-    assert "health" in tool_names
-    assert "ping" in tool_names
-    assert "diagnostics" in tool_names
+    assert "health" in tools
+    assert "ping" in tools
+    assert "diagnostics" in tools
 
 
 def test_sync_tool_success_and_trace():
@@ -23,9 +22,7 @@ def test_sync_tool_success_and_trace():
     def compute_sum(a: int, b: int) -> dict:
         return {"sum": a + b}
 
-    tool_def = harness.mcp._tool_manager.get_tool("compute_sum")
-    assert tool_def is not None
-    result = tool_def.fn(a=2, b=3)
+    result = harness.call_tool("compute_sum", a=2, b=3)
     assert result == {"sum": 5}
 
 
@@ -42,8 +39,7 @@ def test_sync_tool_catches_dataframe_leak():
     def leaky_tool() -> dict:
         return {"df": df}
 
-    tool_def = harness.mcp._tool_manager.get_tool("leaky_tool")
-    result = tool_def.fn()
+    result = harness.call_tool("leaky_tool")
     assert result["status"] == "error"
     assert "Raw DataFrames are strictly prohibited" in result["message"]
     assert "trace_id" in result
@@ -63,8 +59,13 @@ async def test_async_tool_support_and_leak_detection():
     async def async_leaky_tool() -> dict:
         return {"df": df}
 
-    tool_def = harness.mcp._tool_manager.get_tool("async_leaky_tool")
-    result = await tool_def.fn()
+    result = await harness.call_tool("async_leaky_tool")
     assert result["status"] == "error"
     assert "Raw DataFrames are strictly prohibited" in result["message"]
     assert "trace_id" in result
+
+
+def test_call_tool_unregistered_raises():
+    harness = AgentHarness("test-missing", "Missing test", register_builtins=False)
+    with pytest.raises(ValueError, match="not registered"):
+        harness.call_tool("nonexistent_tool")
