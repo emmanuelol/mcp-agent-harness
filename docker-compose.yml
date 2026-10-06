@@ -1,0 +1,18 @@
+services:
+  harness:
+    build: .
+    image: mcp-agent-harness:latest
+    ports:
+      - "8000:8000"
+    environment:
+      - MCP_HARNESS_ENV=development
+    volumes:
+      - ./tests:/app/tests:ro
+      - ./examples:/app/examples:ro
+
+  test:
+    build: .
+    image: mcp-agent-harness:latest
+    entrypoint: ["pytest", "tests/", "-v", "--tb=short"]
+    volumes:
+      - ./tests:/app/tests:ro
