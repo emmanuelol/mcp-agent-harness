@@ -1,4 +1,5 @@
 import pytest
+import pandas as pd
 from mcp_agent_harness.guards import (
     block_raw_dataframes,
     truncate_context,
@@ -7,33 +8,17 @@ from mcp_agent_harness.guards import (
 )
 
 
-class DataFrame:
-    __module__ = "pandas.core.frame"
-
-
 def test_dataframe_blockade():
-    try:
-        import pandas as pd
-        df = pd.DataFrame({"a": [1, 2, 3]})
-    except ImportError:
-        df = DataFrame()
-
+    df = pd.DataFrame({"a": [1, 2, 3]})
     with pytest.raises(TokenStarvationError):
         block_raw_dataframes(df)
 
 
 def test_nested_dataframe_blockade():
-    try:
-        import pandas as pd
-        df = pd.DataFrame({"col": [10, 20]})
-    except ImportError:
-        df = DataFrame()
-
+    df = pd.DataFrame({"col": [10, 20]})
     nested_payload = {
         "status": "success",
-        "nested": [
-            {"data": df}
-        ]
+        "nested": [{"data": df}]
     }
     with pytest.raises(TokenStarvationError):
         block_raw_dataframes(nested_payload)

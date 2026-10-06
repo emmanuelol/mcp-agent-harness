@@ -1,5 +1,8 @@
 # MCP Agent Harness
 
+[![CI Pipeline](https://github.com/emmanuelol/mcp-agent-harness/actions/workflows/ci.yml/badge.svg)](https://github.com/emmanuelol/mcp-agent-harness/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+
 Generic, SRE-hardened Model Context Protocol (MCP) harness for autonomous agents.
 
 ## Quickstart (Containerized)

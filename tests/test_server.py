@@ -1,9 +1,6 @@
 import pytest
+import pandas as pd
 from mcp_agent_harness.server import AgentHarness
-
-
-class DataFrame:
-    __module__ = "pandas.core.frame"
 
 
 def test_harness_init_and_default_tools():
@@ -27,12 +24,7 @@ def test_sync_tool_success_and_trace():
 
 
 def test_sync_tool_catches_dataframe_leak():
-    try:
-        import pandas as pd
-        df = pd.DataFrame({"x": [1]})
-    except ImportError:
-        df = DataFrame()
-
+    df = pd.DataFrame({"x": [1]})
     harness = AgentHarness("test-leak", "Leak test", register_builtins=False)
 
     @harness.tool()
@@ -47,12 +39,7 @@ def test_sync_tool_catches_dataframe_leak():
 
 @pytest.mark.asyncio
 async def test_async_tool_support_and_leak_detection():
-    try:
-        import pandas as pd
-        df = pd.DataFrame({"y": [2]})
-    except ImportError:
-        df = DataFrame()
-
+    df = pd.DataFrame({"y": [2]})
     harness = AgentHarness("test-async", "Async test", register_builtins=False)
 
     @harness.tool()
