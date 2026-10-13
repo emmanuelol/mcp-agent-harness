@@ -4,14 +4,21 @@ import json
 import logging
 import sys
 from functools import wraps
-from typing import Any, Callable
+from typing import Any, Callable, Optional
 
 try:
     from mcp.server.fastmcp import FastMCP
 except (ImportError, ModuleNotFoundError):
     from mcp.server.mcpserver import MCPServer as FastMCP
 
-from .guards import block_raw_dataframes
+from .guards import (
+    TokenStarvationError,
+    ToolRateLimitError,
+    SlidingWindowLimiter,
+    block_raw_dataframes,
+    cap_log_lines,
+    truncate_context,
+)
 from .telemetry import init_trace
 
 logger = logging.getLogger(__name__)
@@ -75,12 +82,26 @@ class AgentHarness:
                 "telemetry_trace_injection": True,
             }
 
-    def tool(self, *args: Any, **kwargs: Any) -> Callable:
+    def tool(
+        self,
+        *args: Any,
+        max_chars: Optional[int] = None,
+        max_lines: Optional[int] = None,
+        strip_xml: bool = True,
+        catch_unhandled: bool = False,
+        rate_limit: Optional[tuple[int, float]] = None,
+        **kwargs: Any,
+    ) -> Callable:
         """
         Decorator wrapping FastMCP tool registration.
         Supports both synchronous and asynchronous tools.
-        Enforces telemetry tracing and data boundary guards.
+        Enforces telemetry tracing, rate limiting, and declarative boundary guards.
         """
+        limiter = (
+            SlidingWindowLimiter(max_calls=rate_limit[0], period_seconds=rate_limit[1])
+            if rate_limit is not None
+            else None
+        )
 
         def decorator(func: Callable) -> Callable:
             tool_name = kwargs.get("name") or getattr(func, "__name__", str(func))
@@ -90,14 +111,37 @@ class AgentHarness:
                 async def async_wrapper(*f_args: Any, **f_kwargs: Any) -> Any:
                     trace_id = init_trace(func.__name__, **f_kwargs)
                     try:
+                        if limiter is not None:
+                            limiter.acquire()
                         result = await func(*f_args, **f_kwargs)
                         block_raw_dataframes(result)
+                        if max_lines is not None and isinstance(result, str):
+                            result = cap_log_lines(result, max_lines=max_lines)
+                        if max_chars is not None and isinstance(result, str):
+                            result = truncate_context(result, max_chars=max_chars, strip_xml=strip_xml)
                         return result
+                    except TokenStarvationError as e:
+                        logger.error(
+                            f"[mcp:{func.__name__}] Async tool token starvation guard | trace_id={trace_id} | error={str(e)}"
+                        )
+                        return {
+                            "status": "error",
+                            "error_code": "TokenStarvationError",
+                            "message": str(e),
+                            "trace_id": trace_id,
+                        }
                     except Exception as e:
+                        if not catch_unhandled:
+                            raise
                         logger.error(
                             f"[mcp:{func.__name__}] Async tool execution failed | trace_id={trace_id} | error={str(e)}"
                         )
-                        return {"status": "error", "message": str(e), "trace_id": trace_id}
+                        return {
+                            "status": "error",
+                            "error_code": type(e).__name__,
+                            "message": str(e),
+                            "trace_id": trace_id,
+                        }
 
                 self._tools[tool_name] = async_wrapper
                 return self.mcp.tool(*args, **kwargs)(async_wrapper)
@@ -107,17 +151,45 @@ class AgentHarness:
                 def sync_wrapper(*f_args: Any, **f_kwargs: Any) -> Any:
                     trace_id = init_trace(func.__name__, **f_kwargs)
                     try:
+                        if limiter is not None:
+                            limiter.acquire()
                         result = func(*f_args, **f_kwargs)
                         block_raw_dataframes(result)
+                        if max_lines is not None and isinstance(result, str):
+                            result = cap_log_lines(result, max_lines=max_lines)
+                        if max_chars is not None and isinstance(result, str):
+                            result = truncate_context(result, max_chars=max_chars, strip_xml=strip_xml)
                         return result
+                    except TokenStarvationError as e:
+                        logger.error(
+                            f"[mcp:{func.__name__}] Sync tool token starvation guard | trace_id={trace_id} | error={str(e)}"
+                        )
+                        return {
+                            "status": "error",
+                            "error_code": "TokenStarvationError",
+                            "message": str(e),
+                            "trace_id": trace_id,
+                        }
                     except Exception as e:
+                        if not catch_unhandled:
+                            raise
                         logger.error(
                             f"[mcp:{func.__name__}] Sync tool execution failed | trace_id={trace_id} | error={str(e)}"
                         )
-                        return {"status": "error", "message": str(e), "trace_id": trace_id}
+                        return {
+                            "status": "error",
+                            "error_code": type(e).__name__,
+                            "message": str(e),
+                            "trace_id": trace_id,
+                        }
 
                 self._tools[tool_name] = sync_wrapper
                 return self.mcp.tool(*args, **kwargs)(sync_wrapper)
+
+        if len(args) == 1 and callable(args[0]):
+            target_func = args[0]
+            args = ()
+            return decorator(target_func)
 
         return decorator
 

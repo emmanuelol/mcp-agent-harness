@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "mcp-agent-harness"
-version = "0.1.0"
+version = "0.2.0"
 description = "Generic, SRE-hardened Model Context Protocol (MCP) harness for autonomous agents."
 readme = "README.md"
 requires-python = ">=3.11"
@@ -18,11 +18,16 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
+dataframe = [
+    "pandas>=2.0.0",
+]
 dev = [
     "pytest>=8.0.0",
     "pytest-asyncio>=0.23.0",
-    "pandas>=2.0.0",
     "httpx>=0.24.0",
+    "fastapi>=0.100.0",
+    "uvicorn>=0.22.0",
+    "pandas>=2.0.0",
     "sse-starlette>=1.6.1",
 ]
 

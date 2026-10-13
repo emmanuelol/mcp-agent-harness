@@ -14,4 +14,14 @@ if [ -n "$MATCHES" ]; then
   exit 1
 fi
 
+if git -C "$TARGET_DIR" rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+  DEV_LEAKS=$(git -C "$TARGET_DIR" ls-files scripts/dev 2>/dev/null || true)
+  if [ -n "$DEV_LEAKS" ]; then
+    echo "SECURITY VIOLATION: Internal dev tooling tracked in git!"
+    echo "$DEV_LEAKS"
+    exit 1
+  fi
+fi
+
 echo "BLACK_LIST_CLEAN: No sensitive IP or credentials found."
+

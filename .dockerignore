@@ -18,3 +18,4 @@ sessions.json
 authorized_users.json
 routing_map.json
 partoo_cache.json
+scripts/dev/
